@@ -1,0 +1,116 @@
+---
+title: "p8105_hw5_yj2802"
+author: "Yizhen Jia"
+date: "`r Sys.Date()`"
+output: github_document
+---
+```{r}
+library(tidyverse)
+library(rvest)
+library(broom)
+```
+
+## Problem 1
+
+```{r}
+birthday = function(n) {
+  birthdays = sample(1:365, n, replace = TRUE)
+  return(any(duplicated(birthdays)))
+}
+
+simulate_probabilities = function(min_size, max_size, simulations) {
+  results = tibble(
+    group_size = min_size:max_size,
+    probability = map_dbl(min_size:max_size, ~{
+      mean(replicate(simulations, birthday(.x)))
+    })
+  )
+  return(results)
+}
+
+min_group_size = 2
+max_group_size = 50
+simulations = 10000
+results = simulate_probabilities(min_group_size, max_group_size, simulations)
+
+ggplot(results, aes(x = group_size, y = probability)) +
+  geom_line() +
+  labs(
+    title = "Probability of Shared Birthdays in a Group",
+    x = "Group Size",
+    y = "Probability"
+  ) +
+  theme_minimal()
+```
+
+As the group size increases, the probability of at least two people sharing a birthday rises rapidly. The probability crosses 50% around group size 23, illustrating the birthday paradox.
+
+## Problem 2
+
+```{r}
+set.seed(123)
+
+n = 30
+sigma = 5
+alpha = 0.05
+sims = 5000
+mu_vals = c(0, 1, 2, 3, 4, 5, 6)
+
+power = c()
+mean_all = c()
+mean_rej = c()
+
+for (mu in mu_vals) {
+  res = replicate(sims, {
+    data = rnorm(n, mean = mu, sd = sigma)
+    t_test = t.test(data, mu = 0) |> tidy()
+    list(est = t_test$estimate, p = t_test$p.value)
+  }, simplify = FALSE) |> bind_rows()
+  power = c(power, mean(res$p < alpha))
+  mean_all = c(mean_all, mean(res$est))
+  mean_rej = c(mean_rej, mean(res$est[res$p < alpha]))
+}
+
+# Create a single data frame
+p2 = tibble(mu = mu_vals, power = power, mean_all = mean_all, mean_rej = mean_rej)
+
+# Plot Power vs. True μ
+ggplot(p2, aes(x = mu, y = power)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "True value of μ", y = "Proportion of Null Rejections (Power)", title = "Power vs. Effect Size (True μ)") +
+  theme_minimal()
+
+# Plot Average estimate μ^ vs. True μ
+ggplot(p2, aes(x = mu)) +
+  geom_line(aes(y = mean_all, color = "Average μ^ (All samples)")) +
+  geom_point(aes(y = mean_all, color = "Average μ^ (All samples)")) +
+  geom_line(aes(y = mean_rej, color = "Average μ^ (Rejected samples)"), linetype = "dashed") +
+  geom_point(aes(y = mean_rej, color = "Average μ^ (Rejected samples)")) +
+  labs(x = "True value of μ", y = "Average estimate of μ^", title = "Average μ^ vs. True μ") +
+  scale_color_manual(values = c("Average μ^ (All samples)" = "blue", "Average μ^ (Rejected samples)" = "red")) +
+  theme_minimal()
+```
+
+## Problem 3
+
+```{r}
+url = "https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv"
+p3data = read_csv(url)
+
+
+p3data = p3data |>
+  mutate(city_state = paste(city, state, sep = ", "))
+
+p3 = p3data |>
+  group_by(city_state) |>
+  summarize(
+    total_homicides = n(),
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+  )
+
+p3
+
+```
+
+
