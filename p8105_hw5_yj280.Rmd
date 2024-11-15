@@ -1,9 +1,10 @@
 ---
 title: "p8105_hw5_yj2802"
 author: "Yizhen Jia"
-date: "`r Sys.Date()`"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output: github_document
 ---
+
 ```{r}
 library(tidyverse)
 library(rvest)
@@ -96,21 +97,40 @@ ggplot(p2, aes(x = mu)) +
 
 ```{r}
 url = "https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv"
-p3data = read_csv(url)
+homicides = read_csv(url)
+```
 
+The raw data homicides have `r nrow(homicides)` ovservations and `r ncol(homicides)` variables. The included variables are: `r colnames(homicides)`.
 
-p3data = p3data |>
-  mutate(city_state = paste(city, state, sep = ", "))
-
-p3 = p3data |>
+```{r}
+p3 = homicides |>
+  mutate(city_state = paste(city, state, sep = ", ")) |>
   group_by(city_state) |>
   summarize(
     total_homicides = n(),
-    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest")),
+    .groups = "drop"
   )
 
-p3
+results = p3 |>
+  mutate(
+    prop_test = map2(unsolved_homicides, total_homicides, ~ prop.test(.x, .y)),
+    tidy_result = map(prop_test, tidy)
+  ) |>
+  unnest(cols = tidy_result) |>
+  select(city_state, estimate, conf.low, conf.high)
 
+results = results |>
+  arrange(desc(estimate))
+
+ggplot(results, aes(x = reorder(city_state, estimate), y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  coord_flip() +
+  labs(
+    x = "City",
+    y = "Proportion of Unsolved Homicides",
+    title = "Proportion of Unsolved Homicides with 95% CIs for Each City"
+  ) +
+  theme_minimal()
 ```
-
-
