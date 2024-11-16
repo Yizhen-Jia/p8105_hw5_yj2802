@@ -71,17 +71,14 @@ for (mu in mu_vals) {
   mean_rej = c(mean_rej, mean(res$est[res$p < alpha]))
 }
 
-# Create a single data frame
 p2 = tibble(mu = mu_vals, power = power, mean_all = mean_all, mean_rej = mean_rej)
 
-# Plot Power vs. True μ
 ggplot(p2, aes(x = mu, y = power)) +
   geom_line() +
   geom_point() +
   labs(x = "True value of μ", y = "Proportion of Null Rejections (Power)", title = "Power vs. Effect Size (True μ)") +
   theme_minimal()
 
-# Plot Average estimate μ^ vs. True μ
 ggplot(p2, aes(x = mu)) +
   geom_line(aes(y = mean_all, color = "Average μ^ (All samples)")) +
   geom_point(aes(y = mean_all, color = "Average μ^ (All samples)")) +
