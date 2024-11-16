@@ -7,6 +7,7 @@ output: github_document
 
 ```{r}
 library(tidyverse)
+library(rvest)
 library(broom)
 ```
 
@@ -78,7 +79,11 @@ ggplot(p2, aes(x = mu, y = power)) +
   geom_point() +
   labs(x = "True value of μ", y = "Proportion of Null Rejections (Power)", title = "Power vs. Effect Size (True μ)") +
   theme_minimal()
+```
 
+As the effect size increases, the power of the test rises rapidly, indicating a higher likelihood of detecting a true effect. The relationship is non-linear, with power increasing quickly for moderate effect sizes and plateauing as the effect size becomes large.
+
+```{r}
 ggplot(p2, aes(x = mu)) +
   geom_line(aes(y = mean_all, color = "Average μ^ (All samples)")) +
   geom_point(aes(y = mean_all, color = "Average μ^ (All samples)")) +
@@ -88,6 +93,10 @@ ggplot(p2, aes(x = mu)) +
   scale_color_manual(values = c("Average μ^ (All samples)" = "blue", "Average μ^ (Rejected samples)" = "red")) +
   theme_minimal()
 ```
+
+Is the sample average of μ^ across tests for which the null is rejected approximately equal to the true value of μ? Why or why not?
+
+No, the sample average of 𝜇̂ across tests for which the null is rejected is not exactly equal to the true value of μ, especially for smaller μ values. This is because samples that lead to rejection of the null tend to have more extreme values, introducing a positive bias in the average estimate.
 
 ## Problem 3
 
@@ -128,5 +137,5 @@ ggplot(results, aes(x = reorder(city_state, estimate), y = estimate)) +
     y = "Proportion of Unsolved Homicides",
     title = "Proportion of Unsolved Homicides with 95% CIs for Each City"
   ) +
-  theme_minimal()
+  theme_minimal() 
 ```
