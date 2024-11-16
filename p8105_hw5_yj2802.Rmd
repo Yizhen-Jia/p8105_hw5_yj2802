@@ -9,6 +9,7 @@ output: github_document
 library(tidyverse)
 library(rvest)
 library(broom)
+library(knitr)
 ```
 
 ## Problem 1
@@ -108,34 +109,83 @@ homicides = read_csv(url)
 The raw data homicides have `r nrow(homicides)` ovservations and `r ncol(homicides)` variables. The included variables are: `r colnames(homicides)`.
 
 ```{r}
-p3 = homicides |>
-  mutate(city_state = paste(city, state, sep = ", ")) |>
-  group_by(city_state) |>
+homicides = read_csv(url) |> 
+  mutate(city_state = paste(city, state, sep = ", "))
+
+city_summary = homicides |> 
+  group_by(city_state) |> 
   summarize(
     total_homicides = n(),
     unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest")),
     .groups = "drop"
   )
 
-results = p3 |>
+baltimore_summary = homicides |> 
+  filter(city_state == "Baltimore, MD") |> 
+  summarize(
+    total_homicides = n(),
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+  )
+
+baltimore_test = prop.test(
+  baltimore_summary$unsolved_homicides, 
+  baltimore_summary$total_homicides
+) |> 
+  broom::tidy() |> 
+  select(estimate, conf.low, conf.high)
+
+baltimore_table = baltimore_test |> 
+  mutate(
+    city = "Baltimore, MD",
+    estimate = round(estimate, 3),
+    conf.low = round(conf.low, 3),
+    conf.high = round(conf.high, 3)
+  ) |> 
+  select(city, estimate, conf.low, conf.high)
+
+knitr::kable(
+  baltimore_table, 
+  caption = "Proportion of Unsolved Homicides in Baltimore, MD"
+)
+
+city_results = city_summary |> 
   mutate(
     prop_test = map2(unsolved_homicides, total_homicides, ~ prop.test(.x, .y)),
-    tidy_result = map(prop_test, tidy)
-  ) |>
-  unnest(cols = tidy_result) |>
+    tidy_results = map(prop_test, tidy)
+  ) |> 
+  unnest(cols = tidy_results) |> 
   select(city_state, estimate, conf.low, conf.high)
 
-results = results |>
-  arrange(desc(estimate))
+city_table = city_results |> 
+  arrange(city_state) |>
+  mutate(
+    estimate = round(estimate, 3),
+    conf.low = round(conf.low, 3),
+    conf.high = round(conf.high, 3)
+  ) |> 
+  rename(
+    `City, State` = city_state,
+    `Proportion` = estimate,
+    `Lower CI` = conf.low,
+    `Upper CI` = conf.high
+  )
 
-ggplot(results, aes(x = reorder(city_state, estimate), y = estimate)) +
-  geom_point() +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+knitr::kable(
+  city_table, 
+  caption = "Proportion of Unsolved Homicides Across U.S. Cities"
+)
+
+
+# Create a ggplot
+ggplot(city_results |> mutate(city_state = reorder(city_state, estimate)), aes(x = city_state, y = estimate)) +
+  geom_point(color = "blue", size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2, color = "darkgray") +
   coord_flip() +
   labs(
-    x = "City",
-    y = "Proportion of Unsolved Homicides",
-    title = "Proportion of Unsolved Homicides with 95% CIs for Each City"
+    title = "Proportion of Unsolved Homicides Across U.S. Cities",
+    x = "City, State",
+    y = "Estimated Proportion of Unsolved Homicides",
+    caption = "Error bars represent 95% confidence intervals"
   ) +
-  theme_minimal() 
+  theme_minimal()
 ```
